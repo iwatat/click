@@ -3,6 +3,7 @@ import pathlib
 import stat
 import sys
 from io import StringIO
+from unittest.mock import patch
 
 import pytest
 
@@ -505,3 +506,44 @@ def test_make_default_short_help(value, max_length, alter, expect):
 
     out = click.utils.make_default_short_help(value, max_length)
     assert out == expect
+
+
+def test_make_str():
+    b = b"test"
+    result = click.utils.make_str(b)
+    assert result == "test"
+
+
+@patch("click.utils.bytes")
+def test_make_str_unicodeerror(mock_bytes):
+    def mock_decode_side_effect(*args):
+        if len(args) == 2 and args == ("utf-8", "replace"):
+            return "test_string"
+        elif len(args) == 1 and args[0] == sys.getfilesystemencoding():
+            raise UnicodeError
+        raise TypeError(f"Unexpected args to mock_decode: {args}")
+
+    with patch("click.utils.isinstance", return_value=True) as mock_instance:
+        mock_bytes_instance = mock_bytes.return_value
+        mock_decode = mock_bytes_instance.decode
+        mock_decode.side_effect = mock_decode_side_effect
+        result = click.utils.make_str(mock_bytes_instance)
+        mock_instance.assert_called_once()
+        assert result == "test_string"
+
+
+@pytest.mark.parametrize(
+    "roaming, expected", [(True, "AppData/Test App"), (False, "LocalAppData/Test App")]
+)
+@patch("click.utils.os.environ.get")
+@patch("click.utils.WIN", return_value=True)
+def test_get_app_dir_win(mock_win, mock_get, roaming, expected):
+    def mock_get_side_effect(*args):
+        if args[0] == "APPDATA":
+            return "AppData"
+        else:
+            return "LocalAppData"
+
+    mock_get.side_effect = mock_get_side_effect
+    result = click.utils.get_app_dir("Test App", roaming)
+    assert result == expected
