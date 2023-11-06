@@ -508,10 +508,12 @@ def test_make_default_short_help(value, max_length, alter, expect):
     assert out == expect
 
 
-def test_make_str():
-    b = b"test"
-    result = click.utils.make_str(b)
-    assert result == "test"
+@pytest.mark.parametrize(
+    "value, expected", [(1, "1"), (1.1, "1.1"), (b"test", "test"), ("string", "string")]
+)
+def test_make_str(value, expected):
+    result = click.utils.make_str(value)
+    assert result == expected
 
 
 @patch("click.utils.bytes")
