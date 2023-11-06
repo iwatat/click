@@ -535,17 +535,29 @@ def test_make_str_unicodeerror(mock_bytes):
 
 
 @pytest.mark.parametrize(
-    "roaming, expected", [(True, "AppData/Test App"), (False, "LocalAppData/Test App")]
+    "get_key_is_none, roaming, expected",
+    [
+        (False, True, "AppData/Test App"),
+        (False, False, "LocalAppData/Test App"),
+        (True, True, "test/Test App"),
+        (True, False, "test/Test App"),
+    ],
 )
+@patch("click.utils.os.path.expanduser", return_value="test/")
 @patch("click.utils.os.environ.get")
 @patch("click.utils.WIN", return_value=True)
-def test_get_app_dir_win(mock_win, mock_get, roaming, expected):
+def test_get_app_dir_win(
+    mock_win, mock_get, mock_expand_user, get_key_is_none, roaming, expected
+):
     def mock_get_side_effect(*args):
         if args[0] == "APPDATA":
             return "AppData"
         else:
             return "LocalAppData"
 
-    mock_get.side_effect = mock_get_side_effect
+    if get_key_is_none:
+        mock_get.return_value = None
+    else:
+        mock_get.side_effect = mock_get_side_effect
     result = click.utils.get_app_dir("Test App", roaming)
     assert result == expected
