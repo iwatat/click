@@ -535,19 +535,23 @@ def test_make_str_unicodeerror(mock_bytes):
 
 
 @pytest.mark.parametrize(
-    "get_key_is_none, roaming, expected",
+    "get_key_is_none, roaming, force_posix, expected",
     [
-        (False, True, "AppData/Test App"),
-        (False, False, "LocalAppData/Test App"),
-        (True, True, "test/Test App"),
-        (True, False, "test/Test App"),
+        (False, True, False, "AppData/Test App"),
+        (False, False, False, "LocalAppData/Test App"),
+        (True, True, False, "test/Test App"),
+        (True, False, False, "test/Test App"),
+        (False, True, True, "AppData/Test App"),
+        (False, False, True, "LocalAppData/Test App"),
+        (True, True, True, "test/Test App"),
+        (True, False, True, "test/Test App"),
     ],
 )
 @patch("click.utils.os.path.expanduser", return_value="test/")
 @patch("click.utils.os.environ.get")
-@patch("click.utils.WIN", return_value=True)
+@patch("click.utils.WIN", True)
 def test_get_app_dir_win(
-    mock_win, mock_get, mock_expand_user, get_key_is_none, roaming, expected
+    mock_get, mock_expanduser, get_key_is_none, roaming, force_posix, expected
 ):
     def mock_get_side_effect(*args):
         if args[0] == "APPDATA":
@@ -559,5 +563,22 @@ def test_get_app_dir_win(
         mock_get.return_value = None
     else:
         mock_get.side_effect = mock_get_side_effect
-    result = click.utils.get_app_dir("Test App", roaming)
+    result = click.utils.get_app_dir("Test App", roaming, force_posix)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "force_posix, expected",
+    [
+        (True, "~/.test-app"),
+    ],
+)
+@patch("click.utils.os.path.expanduser")
+@patch("click.utils.WIN", False)
+def test_get_app_dir_posix(mock_expanduser, force_posix, expected):
+    def mock_expanduser_side_effect(*args):
+        return args[0]
+
+    mock_expanduser.side_effect = mock_expanduser_side_effect
+    result = click.utils.get_app_dir("Test App", force_posix=force_posix)
     assert result == expected
