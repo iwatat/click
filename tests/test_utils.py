@@ -568,17 +568,21 @@ def test_get_app_dir_win(
 
 
 @pytest.mark.parametrize(
-    "force_posix, expected",
-    [(True, "~/.test-app"), (False, "config/test-app")],
+    "force_posix, platform, expected",
+    [
+        (True, "aix", "~/.test-app"),
+        (False, "aix", "config/test-app"),
+        (False, "darwin", "~/Library/Application Support/Test App"),
+    ],
 )
 @patch.dict(os.environ, {"XDG_CONFIG_HOME": "config/"}, clear=True)
-@patch("click.utils.sys.platform", "aix")
 @patch("click.utils.os.path.expanduser")
 @patch("click.utils.WIN", False)
-def test_get_app_dir_posix(mock_expanduser, force_posix, expected):
+def test_get_app_dir_posix(mock_expanduser, force_posix, platform, expected):
     def mock_expanduser_side_effect(*args):
         return args[0]
 
     mock_expanduser.side_effect = mock_expanduser_side_effect
-    result = click.utils.get_app_dir("Test App", force_posix=force_posix)
-    assert result == expected
+    with patch("click.utils.sys.platform", platform):
+        result = click.utils.get_app_dir("Test App", force_posix=force_posix)
+        assert result == expected
