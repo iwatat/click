@@ -500,7 +500,7 @@ def test_expand_args(monkeypatch):
     ],
 )
 def test_make_default_short_help(value, max_length, alter, expect):
-    # assert len(expect) <= max_length
+    assert len(expect) <= max_length
 
     if alter:
         value = alter(value)
